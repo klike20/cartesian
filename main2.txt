@@ -1,0 +1,141 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"sort"
+
+	"github.com/gorilla/mux"
+
+	"io/ioutil"
+
+	"math"
+
+	"strconv"
+
+	"calculator"
+
+	"loader"
+
+	"entities"
+)
+
+type App struct {
+	Router *mux.Router
+}
+
+type Coor struct {
+	X        float64 `json:"x"`
+	Y        float64 `json:"y"`
+	Distance float64 `json:"-"`
+}
+
+var Coors []Coor
+
+var points []entities.CartesianCoordinates
+
+func homePage(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Welcome to the api points!")
+	fmt.Println("hitting api points")
+}
+
+func pathHandler(w http.ResponseWriter, r *http.Request) {
+	path := r.FormValue("path")
+	points = loader.GetPoints(path, true)
+}
+
+func pointsHandler(w http.ResponseWriter, r *http.Request) {
+	maxDistance, _ := strconv.ParseFloat(r.FormValue("distance"), 64)
+	xSearchPoint, _ := strconv.ParseFloat(r.FormValue("x"), 64)
+	ySearchPoint, _ := strconv.ParseFloat(r.FormValue("y"), 64)
+
+	fmt.Println("the distance! ", maxDistance)
+	fmt.Println("the x! ", xSearchPoint)
+	fmt.Println("the y! ", ySearchPoint)
+
+	pointsInRange := calculator.GetPointsInRange(maxDistance, xSearchPoint, ySearchPoint, points)
+
+	json.NewEncoder(w).Encode(pointsInRange)
+}
+
+func coordinates(w http.ResponseWriter, r *http.Request) {
+
+	maxDistance, _ := strconv.ParseFloat(r.FormValue("distance"), 64)
+	xSP, _ := strconv.ParseFloat(r.FormValue("x"), 64)
+	ySP, _ := strconv.ParseFloat(r.FormValue("y"), 64)
+
+	fmt.Println("the distance ", maxDistance)
+	fmt.Println("the x ", xSP)
+	fmt.Println("the y ", ySP)
+
+	//var points []Cor = Cors[:0]
+	pointsInRange := make([]Coor, 0)
+
+	for i := 0; i < len(Coors); i++ {
+		Coors[i].Distance = math.Abs(xSP-Coors[i].X) + math.Abs(ySP-Coors[i].Y)
+		if distance := Coors[i].Distance; distance <= maxDistance {
+			pointsInRange = append(pointsInRange, Coors[i])
+		}
+	}
+
+	sort.SliceStable(pointsInRange, func(i, j int) bool {
+		return pointsInRange[i].Distance < pointsInRange[j].Distance
+	})
+
+	if len(points) < 1 {
+		pointsInRange = Coors[:0]
+	}
+
+	json.NewEncoder(w).Encode(pointsInRange)
+}
+
+func (a *App) handleRequests(start bool) {
+	//with Mux
+	myRouter := mux.NewRouter() //.StrictSlash(true)
+	myRouter.HandleFunc("/", homePage)
+
+	myRouter.HandleFunc("/api/points/path", pathHandler).Methods("POST", "GET")
+	myRouter.Path("/api/pointsOld").Queries("distance", "{distance}", "x", "{x}", "y", "{y}").HandlerFunc(coordinates)
+	myRouter.Path("/api/points").Queries("distance", "{distance}", "x", "{x}", "y", "{y}").HandlerFunc(pointsHandler)
+
+	if start == true {
+		log.Fatal(http.ListenAndServe(":10000", myRouter))
+	}
+
+	//with http direclty
+	//http.HandleFunc("/", homePage)
+	//http.HandleFunc("/cor", pointsHandler)
+	//log.Fatal(http.ListenAndServe(":10000", nil))
+
+	a.Router = myRouter
+}
+
+func (a *App) init() {
+	log.Fatal(http.ListenAndServe(":10000", a.Router))
+}
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+func loadCors() {
+
+	//First approach
+	dat, err := ioutil.ReadFile("data.json")
+	check(err)
+	_ = json.Unmarshal([]byte(dat), &Coors)
+
+	//second approach
+	points = loader.GetPoints("data.json", false)
+}
+
+func main() {
+	a := App{}
+	loadCors()
+	a.handleRequests(true)
+	//a.init()
+}
