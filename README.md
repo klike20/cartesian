@@ -52,3 +52,5 @@ Possible future work:
 * Review interface based implementation
 
 * Improve API validation implementation
+
+* Review the parameters strategic and add security to the API, one option could be to use JWT (github.com/dgrijalva/jwt-go)
