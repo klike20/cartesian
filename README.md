@@ -41,3 +41,14 @@ Explanation:
 * Some commented code will be found, only with the purpose to show different alternatives for the implementation
 
 * In the entities package, some commented code can be seen with the intentation to show how the implementation could be extended in case the coordinates system changes so the distance should be calculates in other way based on the coordinates for that paticular system (cilindric, spheric, polar, etc)
+
+
+Possible future work:
+
+* Include a package like swagger (https://goswagger.io/) to improve API documentation
+
+* Improve routing implementation to make it simplier
+
+* Review interface based implementation
+
+* Improve API validation implementation
